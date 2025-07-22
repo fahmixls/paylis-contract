@@ -1,141 +1,136 @@
-# Stablecoin Payment Gateway (EIP-2771)
+# PaymentGateway
 
-A secure and gas-efficient smart contract for processing payments using multiple stablecoins, with support for:
+A minimal, **EIP-2771** meta-transaction compatible payment gateway that:
 
-- EIP-2771 meta-transactions (via trusted forwarder)
-- Custom per-token fee configuration (fixed + percentage)
-- Fee withdrawal for contract owner
-- Reentrancy protection and overflow safety
-
-Supports integration into decentralized applications (dApps) where users can pay with USDC, USDT, or other ERC-20 stablecoins.
+- Accepts **any ERC-20** token the owner activates
+- Charges a **configurable fee** (in basis-points) at call-time
+- Accumulates fees in-contract and lets the owner **sweep** them to an immutable fee collector
+- Is **re-entrancy protected** and **ownable**
 
 ---
 
-## ✨ Features
+📦 Repository layout
 
-- 🔐 Owner-controlled token management and fee settings
-- 💰 Per-token fixed + percentage-based fees
-- 🧾 Transparent event logging for all major operations
-- 🔁 Meta-transaction support with `_msgSender()` override
-- 🧱 Optimized with `unchecked` increments and gas-efficient logic
-- 🛡️ Reentrancy-safe using `ReentrancyGuard`
-- 📜 Fully compatible with OpenZeppelin contracts
-
----
-
-## 🛠️ Foundry Workflow
-
-**Foundry** is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.
-
-It includes:
-
-- **Forge** — Ethereum testing framework
-- **Cast** — CLI tool for blockchain interaction
-- **Anvil** — Local Ethereum node
-- **Chisel** — Solidity REPL
-
-📚 Documentation: [https://book.getfoundry.sh](https://book.getfoundry.sh)
+```
+.
+├── src/
+│   └── PaymentGateway.sol       # Main contract
+├── script/
+│   └── DeployPaymentGateway.s.sol
+├── test/
+│   ├── PaymentGateway.t.sol
+│   └── mocks/
+│       └── MockERC20.sol
+├── Makefile
+├── README.md
+└── foundry.toml
+```
 
 ---
 
-## 🔧 Usage
+🛠️ Quick start (Foundry)
 
-### Build Contracts
+1. Install dependencies
+
+   ```bash
+   make install
+   ```
+
+2. Compile
+
+   ```bash
+   make build
+   ```
+
+3. Run all tests
+
+   ```bash
+   make test
+   ```
+
+4. Lint & format
+   ```bash
+   make fmt
+   ```
+
+---
+
+🚀 Deployment
+
+Create a `.env` file (never commit it):
 
 ```bash
-forge build
+PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
+OWNER=0xYourOwnerAddress          # optional, defaults to deployer
+FEE_COLLECTOR=0xYourTreasury      # optional, defaults to OWNER
 ```
 
-### Run Tests
+Deploy:
 
 ```bash
-forge test
+make deploy
 ```
 
-### Format Code
+Dry-run only:
 
 ```bash
-forge fmt
-```
-
-### Snapshot Gas Usage
-
-```bash
-forge snapshot
-```
-
-### Start Local Node
-
-```bash
-anvil
+make deploy-dry
 ```
 
 ---
 
-## 🚀 Deployment
+🧪 Testing
 
-Replace values with your actual RPC URL and private key:
+The test-suite (`test/PaymentGateway.t.sol`) covers:
 
-```bash
-forge script script/StablecoinPaymentGateway.s.sol:DeployScript \
-  --rpc-url <your_rpc_url> \
-  --private-key <your_private_key> \
-  --broadcast
-```
+- Admin token management (`manageToken`, `toggleTokenActive`)
+- Happy-path & edge-case payments (inactive token, fee too high, zero amounts, etc.)
+- Fee accumulation & sweeping
+- View helpers (`getAllActive`, `getAccumulatedFees`)
+- Re-entrancy guard sanity checks
 
-Ensure that `DeployScript` contains constructor args like the `trustedForwarder`.
-
----
-
-## 🧪 Interact with Cast
-
-Example: Get owner of the contract
+Run with traces:
 
 ```bash
-cast call <contract_address> "owner()(address)" --rpc-url <your_rpc_url>
+forge test -vvv
 ```
 
 ---
 
-## 🗂️ Contract Structure Overview
+⚙️ Environment variables
 
-### Constructor
-
-```solidity
-constructor(address trustedForwarder)
-```
-
-### Key Functions
-
-#### `manageToken`
-
-Add or update token configuration
-
-#### `pay`
-
-Process a payment, automatically calculates and deducts fee
-
-#### `withdrawFees`
-
-Withdraw accumulated platform fees (only owner)
-
-#### `calculateFee`
-
-Returns the total fee for a given amount
-
-#### `getAllActiveTokens`
-
-Returns all tokens that are currently active
+| Variable        | Default  | Purpose                          |
+| --------------- | -------- | -------------------------------- |
+| `PRIVATE_KEY`   | —        | Deployer key (required)          |
+| `RPC_URL`       | —        | Target chain RPC endpoint        |
+| `OWNER`         | deployer | Contract owner                   |
+| `FEE_COLLECTOR` | `OWNER`  | Address that receives swept fees |
 
 ---
 
-## 📦 Dependencies
+📜 Makefile targets
 
-- OpenZeppelin Contracts (v4.x)
-- Solidity ^0.8.29
+| Target            | Description                  |
+| ----------------- | ---------------------------- |
+| `make help`       | Show all commands            |
+| `make install`    | `forge install` dependencies |
+| `make build`      | Compile contracts            |
+| `make test`       | Run full test suite          |
+| `make fmt`        | Format Solidity & JS         |
+| `make clean`      | Remove cache & artifacts     |
+| `make deploy`     | Build, test, deploy & verify |
+| `make deploy-dry` | Simulate deployment          |
 
 ---
 
-## 📜 License
+🔐 Security notes
 
+- The `feeCollector` is **immutable** and **cannot be changed** after deployment.
+- The owner can activate/deactivate tokens and sweep fees, but cannot alter fee percentages (they are supplied per call).
+- All external entry-points use `nonReentrant`.
+
+---
+
+License
 MIT

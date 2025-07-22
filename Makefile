@@ -1,68 +1,74 @@
-# ===========================
-#  Env / RPC aliases
-# ===========================
-ANVIL_RPC      := http://localhost:8545
-SEPOLIA_RPC    := https://rpc.sepolia-api.lisk.com
-MAINNET_RPC    := https://rpc.api.lisk.com
+# ------------------------------------------------------------------------------
+# Foundry / PaymentGateway project Makefile
+# ------------------------------------------------------------------------------
 
-# Default to Anvil
-RPC_URL        ?= $(ANVIL_RPC)
+# Read RPC and private key (required)
+RPC_URL   ?= https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+PRIVATE_KEY ?= $(shell grep -E '^PRIVATE_KEY=' .env | cut -d '=' -f2)
 
-# ===========================
-#  Build & Test
-# ===========================
-.PHONY: build test clean snapshot
+# Default OWNER & FEE_COLLECTOR to the deployer address if not provided
+DEPLOYER_ADDR := $(shell cast wallet address --private-key $(PRIVATE_KEY))
+OWNER       ?= $(DEPLOYER_ADDR)
+FEE_COLLECTOR ?= $(OWNER)
 
-build:
+# Forwarder (set to 0x0 to disable)
+TRUSTED_FORWARDER ?= 0x0000000000000000000000000000000000000000
+
+# Script name/path helpers
+SCRIPT_NAME := DeployPaymentGateway
+SCRIPT_PATH := script/${SCRIPT_NAME}.s.sol:${SCRIPT_NAME}
+
+# ------------------------------------------------------------------------------
+# Default
+# ------------------------------------------------------------------------------
+.PHONY: help
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+# ------------------------------------------------------------------------------
+# Development
+# ------------------------------------------------------------------------------
+.PHONY: install
+install: ## Install dependencies
+	forge install
+
+.PHONY: build
+build: ## Compile contracts
 	forge build
 
-test:
-	forge test -vv
+.PHONY: test
+test: ## Run all tests
+	forge test -vvv
 
-clean:
-	forge clean
-
-snapshot:
+.PHONY: snapshot
+snapshot: ## Create gas snapshot
 	forge snapshot
 
-# ===========================
-#  Local deployment
-# ===========================
-.PHONY: anvil
-anvil:
-	anvil --chain-id 31337 --accounts 10
+.PHONY: fmt
+fmt: ## Lint / format code
+	forge fmt
 
-.PHONY: deploy-anvil
-deploy-anvil: RPC_URL=$(ANVIL_RPC)
-deploy-anvil: deploy
+.PHONY: clean
+clean: ## Clean build artifacts
+	forge clean
 
-# ===========================
-#  Public testnet / mainnet
-# ===========================
-.PHONY: deploy-sepolia
-deploy-sepolia: RPC_URL=$(SEPOLIA_RPC)
-deploy-sepolia: deploy
-
-.PHONY: deploy-mainnet
-deploy-mainnet: RPC_URL=$(MAINNET_RPC)
-deploy-mainnet: deploy
-
-# ===========================
-#  Shared deploy recipe
-# ===========================
+# ------------------------------------------------------------------------------
+# Deployment
+# ------------------------------------------------------------------------------
 .PHONY: deploy
-deploy:
-	@echo "Deploying to $(RPC_URL)"
-	forge script script/Deploy.s.sol:DeployGateway \
+deploy: build test ## Deploy to the configured chain
+	@forge script $(SCRIPT_PATH) \
 		--rpc-url $(RPC_URL) \
-		--private-key ${PRIVATE_KEY} \
+		--private-key $(PRIVATE_KEY) \
+		--sig "run()" \
 		--broadcast \
 		--verify \
-		-vv
+		-vvv
 
-# ===========================
-#  Verify only (if needed)
-# ===========================
-.PHONY: verify
-verify:
-	@echo "Manual verification not implemented yet"
+.PHONY: deploy-dry
+deploy-dry: build ## Dry-run deployment (no broadcast)
+	@forge script $(SCRIPT_PATH) \
+		--rpc-url $(RPC_URL) \
+		--private-key $(PRIVATE_KEY) \
+		--sig "run()" \
+		-vvv
