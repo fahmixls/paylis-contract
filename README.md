@@ -1,136 +1,72 @@
-# PaymentGateway
+# EIP-2771 Payment Gateway
 
-A minimal, **EIP-2771** meta-transaction compatible payment gateway that:
+A meta-transaction enabled payment gateway with forwarder for Lisk Sepolia.
 
-- Accepts **any ERC-20** token the owner activates
-- Charges a **configurable fee** (in basis-points) at call-time
-- Accumulates fees in-contract and lets the owner **sweep** them to an immutable fee collector
-- Is **re-entrancy protected** and **ownable**
+## Quick Start
 
----
-
-📦 Repository layout
-
-```
-.
-├── src/
-│   └── PaymentGateway.sol       # Main contract
-├── script/
-│   └── DeployPaymentGateway.s.sol
-├── test/
-│   ├── PaymentGateway.t.sol
-│   └── mocks/
-│       └── MockERC20.sol
-├── Makefile
-├── README.md
-└── foundry.toml
-```
-
----
-
-🛠️ Quick start (Foundry)
-
-1. Install dependencies
+1. **Setup Environment**
 
    ```bash
-   make install
+   cp .env.example .env
+   # Edit .env with your actual values
    ```
 
-2. Compile
+2. **Install Dependencies**
 
    ```bash
-   make build
+   forge install
    ```
 
-3. Run all tests
+3. **Deploy Mock Tokens (Optional)**
 
    ```bash
-   make test
+   ./deploy-mocks.sh
    ```
 
-4. Lint & format
+   Copy the displayed addresses to your `.env` file.
+
+4. **Deploy Main Contracts**
    ```bash
-   make fmt
+   ./deploy.sh
    ```
 
----
+## Contracts
 
-🚀 Deployment
+- **MinimalForwarder**: EIP-2771 compatible forwarder for meta-transactions
+- **PaymentGateway**: Main payment gateway that accepts ERC-20 tokens with configurable fees
+- **MockERC20**: Simple mock tokens for testing (USDC, IDRX)
 
-Create a `.env` file (never commit it):
-
-```bash
-PRIVATE_KEY=0xYOUR_PRIVATE_KEY
-RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
-OWNER=0xYourOwnerAddress          # optional, defaults to deployer
-FEE_COLLECTOR=0xYourTreasury      # optional, defaults to OWNER
-```
-
-Deploy:
+## Environment Variables
 
 ```bash
-make deploy
+# Required
+PRIVATE_KEY=your_private_key_here
+LISK_SEPOLIA_RPC_URL=https://rpc.sepolia-api.lisk.com
+OWNER_ADDRESS=0x...
+FEE_COLLECTOR_ADDRESS=0x...
+
+# Mock token addresses
+MOCK_USDC_ADDRESS=0x...
+MOCK_IDRX_ADDRESS=0x...
 ```
 
-Dry-run only:
+## Deployment Commands
 
 ```bash
-make deploy-dry
+# Deploy mock tokens first
+forge script script/DeployMocks.s.sol --rpc-url $LISK_SEPOLIA_RPC_URL --broadcast --verify
+
+# Deploy main contracts
+forge script script/Deploy.s.sol --rpc-url $LISK_SEPOLIA_RPC_URL --broadcast --verify
+
+# Or use the convenience script
+./deploy.sh
 ```
 
----
+## Features
 
-🧪 Testing
-
-The test-suite (`test/PaymentGateway.t.sol`) covers:
-
-- Admin token management (`manageToken`, `toggleTokenActive`)
-- Happy-path & edge-case payments (inactive token, fee too high, zero amounts, etc.)
-- Fee accumulation & sweeping
-- View helpers (`getAllActive`, `getAccumulatedFees`)
-- Re-entrancy guard sanity checks
-
-Run with traces:
-
-```bash
-forge test -vvv
-```
-
----
-
-⚙️ Environment variables
-
-| Variable        | Default  | Purpose                          |
-| --------------- | -------- | -------------------------------- |
-| `PRIVATE_KEY`   | —        | Deployer key (required)          |
-| `RPC_URL`       | —        | Target chain RPC endpoint        |
-| `OWNER`         | deployer | Contract owner                   |
-| `FEE_COLLECTOR` | `OWNER`  | Address that receives swept fees |
-
----
-
-📜 Makefile targets
-
-| Target            | Description                  |
-| ----------------- | ---------------------------- |
-| `make help`       | Show all commands            |
-| `make install`    | `forge install` dependencies |
-| `make build`      | Compile contracts            |
-| `make test`       | Run full test suite          |
-| `make fmt`        | Format Solidity & JS         |
-| `make clean`      | Remove cache & artifacts     |
-| `make deploy`     | Build, test, deploy & verify |
-| `make deploy-dry` | Simulate deployment          |
-
----
-
-🔐 Security notes
-
-- The `feeCollector` is **immutable** and **cannot be changed** after deployment.
-- The owner can activate/deactivate tokens and sweep fees, but cannot alter fee percentages (they are supplied per call).
-- All external entry-points use `nonReentrant`.
-
----
-
-License
-MIT
+- **EIP-2771 Meta-Transactions**: Users can have their transactions sponsored
+- **Configurable Fees**: Fee taken as basis points (0-10000 bps)
+- **Multi-Token Support**: Owner can activate/deactivate ERC-20 tokens
+- **Fee Collection**: Accumulated fees can be swept by owner
+- **Gas Optimized**: Minimal storage and efficient operations
