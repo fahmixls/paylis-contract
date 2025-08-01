@@ -5,6 +5,9 @@ libs = ["lib"]
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
 ]
+fs_permissions = [
+  { access = "write", path = "./deployed-addresses.txt" }
+]
 
 # Solc settings
 solc_version = "0.8.29"

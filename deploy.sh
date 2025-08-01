@@ -13,14 +13,14 @@ fi
 source .env
 
 # Validate required variables
-if [ -z "$PRIVATE_KEY" ] || [ -z "$LISK_SEPOLIA_RPC_URL" ] || [ -z "$OWNER_ADDRESS" ] || [ -z "$FEE_COLLECTOR_ADDRESS" ]; then
+if [ -z "$PRIVATE_KEY" ] || [ -z "$LISK_SEPOLIA_RPC_URL" ] || [ -z "$OWNER_ADDRESS" ]; then
     echo "❌ Missing required environment variables. Please check your .env file."
     exit 1
 fi
 
 # Deploy contracts
 echo "📦 Deploying contracts..."
-forge script script/Deploy.s.sol \
+forge script script/DeployScript.s.sol \
     --rpc-url $LISK_SEPOLIA_RPC_URL \
     --broadcast \
     --verify \
